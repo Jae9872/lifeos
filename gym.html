@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0b0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>FAT BROKE - Gym</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="lifeos.css">
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <button class="iconbtn" id="backBtn" style="display:none">←</button>
+    <div class="brand"><h2 id="barTitle">Gym</h2><div class="sub" id="barSub">Today's session</div></div>
+    <a class="iconbtn" href="settings.html" title="Settings">⚙</a>
+  </div>
+
+  <div class="view active" id="gym">
+    <div class="eyebrow" id="gymDay">Today</div>
+    <h1 class="title" id="todayWorkout"></h1>
+    <div class="muted-p" id="gymLbl">Today’s session</div>
+    <div class="chips" id="tierChips" style="margin-bottom:14px"></div>
+    <button class="cta" id="continueBtn" onclick="continueToday()">Continue</button>
+    <div class="legend" style="margin-top:16px">
+      <div class="li"><span class="dot Heavy"></span><b>Heavy</b> low reps</div>
+      <div class="li"><span class="dot Hypertrophy"></span><b>Build</b> mid reps</div>
+      <div class="li"><span class="dot Pump"></span><b>Pump</b> high reps</div>
+    </div>
+    <div class="sectit">This week</div>
+    <div class="week" id="weekList"></div>
+  </div>
+
+  <div class="view" id="preview">
+    <div class="eyebrow" id="prevDay">Workout Preview</div>
+    <h1 class="title" style="margin-bottom:6px">These are your exercises for today</h1>
+    <div class="muted-p" id="prevWorkout"></div>
+    <div id="prevWorkoutPreview" style="margin-top:16px"></div>
+    <button class="cta" id="letsGoBtn" onclick="letsGo()">Let's Go →</button>
+    <button class="cta ghost" style="margin-top:9px;margin-bottom:24px" onclick="goGym()">← Back to Lobby</button>
+  </div>
+
+  <div class="view" id="player">
+    <div class="pbar"><i id="pfill"></i></div>
+    <div class="exhead"><div class="exname" id="exName"></div><div class="tier" id="exTier"></div></div>
+    <div class="exsub" id="exSub"></div>
+    <div id="playerExNext" style="font-size:12.1px;color:var(--muted);margin-top:-6px;margin-bottom:12px;font-weight:500"></div>
+    <div class="media" id="media"></div>
+    <div class="setdots" id="setDots"></div>
+    <div class="card">
+      <div class="slbl" id="setLbl">Set 1</div>
+      <div class="tgt" id="setTgt"></div>
+      <div class="steppers">
+        <div class="stepper"><div class="cap">Weight</div><div class="ctl"><button onclick="bump('w',-1)">−</button><div class="val"><input id="wIn" class="num" inputmode="decimal"></div><button onclick="bump('w',1)">+</button></div><div class="unit">kg</div></div>
+        <div class="stepper"><div class="cap">Reps</div><div class="ctl"><button onclick="bump('r',-1)">−</button><div class="val"><input id="rIn" class="num" inputmode="numeric"></div><button onclick="bump('r',1)">+</button></div><div class="unit">reps</div></div>
+      </div>
+      <button class="donebtn" onclick="doneSet()">✓ Done set</button>
+      <div class="minor"><button onclick="prevSet()">← Back</button><button onclick="openDrawer()">View workout</button><button onclick="skipExercise()">Skip</button></div>
+    </div>
+    <div id="playerNextUp" class="nextup-card"></div>
+  </div>
+
+  <div class="view" id="summary">
+    <div class="eyebrow">Complete</div>
+    <h1 class="title" id="sumTitle">Workout done</h1>
+    <div class="stats" id="sumStats"></div>
+    <div class="sectit">Breakdown</div>
+    <div id="sumList"></div>
+    <button class="cta" style="margin-top:16px" onclick="saveSession()">Save &amp; finish</button>
+    <button class="cta ghost" style="margin-top:9px" onclick="goGym()">Discard</button>
+  </div>
+
+  <div class="rest" id="rest">
+    <div class="cap" id="restCap">Rest</div>
+    <div class="ring2"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="6"/><circle id="ringFg" cx="50" cy="50" r="45" fill="none" stroke="#6c8cff" stroke-width="7" stroke-linecap="round" stroke-dasharray="283" stroke-dashoffset="0"/></svg><div class="t num" id="restTime">1:30</div></div>
+    <div class="nextup" id="nextUp"></div>
+    <div class="adj"><button onclick="adjRest(-15)">—15s</button><button onclick="adjRest(15)">+15s</button></div>
+    <button class="skip" onclick="endRest()">Skip →</button>
+  </div>
+
+  <div class="tabbar">
+    <a id="tabToday" href="index.html"><span class="ic">🌞</span>Today</a>
+    <a id="tabGym" class="on" href="gym.html"><span class="ic">🏋️</span>Gym</a>
+    <a id="tabWork" href="work.html"><span class="ic">💼</span>Work</a>
+    <a id="tabFood" href="food.html"><span class="ic">🍳</span>Fuel</a>
+    <a id="tabProg" href="progress.html"><span class="ic">📊</span>Progress</a>
+  </div>
+
+  <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+  <div class="drawer" id="workoutDrawer">
+    <div class="drawer-header">
+      <h3 id="drawerTitle">Today's Workout</h3>
+      <button class="close-btn" onclick="closeDrawer()">×</button>
+    </div>
+    <div class="drawer-content" id="drawerContent"></div>
+  </div>
+</div>
+
+<script src="shared.js"></script>
+<script>
+let S = null;
+let rest = { t: 0, total: 0, iv: null };
+
+function setBar(t, s) {
+  document.getElementById('barTitle').textContent = t;
+  document.getElementById('barSub').textContent = s;
+}
+
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function goGym() {
+  showView('gym');
+  const tw = todayWorkoutName();
+  setBar('Gym', tw || 'Rest day');
+  hideBack();
+  renderGym();
+}
+
+const RESTS = { Heavy: 90, Hypertrophy: 75, Pump: 45 };
+function restFor(ex) {
+  return ex.rest || RESTS[ex.tier] || 75;
+}
+
+function parseRange(t) {
+  var m = String(t || '').match(/(\d+)\s*-\s*(\d+)/);
+  if (m) return { min: +m[1], max: +m[2] };
+  m = String(t || '').match(/(\d+)/);
+  return m ? { min: +m[1], max: +m[1] } : { min: 8, max: 12 };
+}
+
+function latestExerciseLog(name) {
+  var hist = lsGet('jae_sessions', []).slice().sort(function(a,b){
+    return new Date(b.date) - new Date(a.date);
+  });
+  for (var i = 0; i < hist.length; i++) {
+    var log = hist[i].log || [];
+    for (var j = 0; j < log.length; j++) {
+      if (log[j].exercise === name && log[j].sets && log[j].sets.length) return log[j];
+    }
+  }
+  return null;
+}
+
+function recommendation(ex) {
+  var r = parseRange(ex.repTarget);
+  var base = Number.isFinite(+ex.nextKg) ? +ex.nextKg : (Number.isFinite(+ex.startKg) ? +ex.startKg : 0);
+  var lastLog = latestExerciseLog(ex.exercise);
+  var kg = base;
+  var target = r.min;
+  var note = 'Start here';
+  
+  if (lastLog && lastLog.sets && lastLog.sets.length) {
+    var sets = lastLog.sets.filter(function(s) {
+      return Number.isFinite(+s.kg) && Number.isFinite(+s.reps);
+    });
+    if (sets.length) {
+      kg = +sets[sets.length - 1].kg || base;
+      var sameKg = sets.filter(function(s) {
+        return Math.abs((+s.kg) - kg) < 0.01;
+      });
+      var hitTop = sameKg.length >= (ex.sets || sameKg.length) && sameKg.every(function(s) {
+        return +s.reps >= r.max;
+      });
+      if (hitTop) {
+        kg = Math.round((kg + 2.5) / 2.5) * 2.5;
+        target = r.min;
+        note = 'Weight up, rebuild reps';
+      } else {
+        var low = Math.min.apply(null, sameKg.map(function(s) { return +s.reps; }));
+        target = Math.min(r.max, Math.max(r.min, low + 1));
+        note = 'Add reps before weight';
+      }
+    }
+  }
+  return { kg: Math.round(kg / 2.5) * 2.5, target: target, range: r.min + '-' + r.max, rest: restFor(ex), note: note };
+}
+
+function calcWarmupRange(W, minPct, maxPct) {
+  let low = Math.round((W * minPct) / 2.5) * 2.5;
+  let high = Math.round((W * maxPct) / 2.5) * 2.5;
+  if (low < 2.5) low = 2.5;
+  if (high < 2.5) high = 2.5;
+  if (low === high) return low + ' kg';
+  return low + '–' + high + ' kg';
+}
+
+function renderGym() {
+  const wd = WD[new Date().getDay()];
+  const tw = todayWorkoutName();
+  const rest_ = isRest(tw);
+  
+  document.getElementById('gymDay').textContent = dateStr();
+  document.getElementById('todayWorkout').textContent = rest_ ? 'Rest + Mobility' : tw;
+  
+  const chips = document.getElementById('tierChips');
+  const continueBtn = document.getElementById('continueBtn');
+  
+  if (rest_) {
+    document.getElementById('gymLbl').textContent = 'Recovery day \u2014 light mobility or an easy walk';
+    chips.innerHTML = '<span class="tchip">Light mobility</span><span class="tchip">Easy walk</span>';
+    if (continueBtn) continueBtn.style.display = 'none';
+  } else {
+    const exs = DATA.workouts[tw] || [];
+    const counts = {};
+    exs.forEach(e => { counts[e.tier] = (counts[e.tier] || 0) + 1; });
+    document.getElementById('gymLbl').textContent = exs.length + ' exercises \u00b7 ~' + estMin(tw) + ' min';
+    
+    let ch = '';
+    ['Heavy', 'Hypertrophy', 'Pump'].forEach(t => {
+      if (counts[t]) ch += '<span class="tchip"><span class="dot ' + t + '"></span>' + counts[t] + ' ' + fmtTier(t) + '</span>';
+    });
+    chips.innerHTML = ch;
+    if (continueBtn) continueBtn.style.display = '';
+  }
+  
+  const wl = document.getElementById('weekList');
+  wl.innerHTML = '';
+  (DATA.schedule || []).forEach(sc => {
+    const r = document.createElement('div');
+    const rr = isRest(sc.workout);
+    r.className = 'wrow' + (sc.day === wd ? ' today' : '') + (rr ? ' rest' : '');
+    const n = DATA.workouts[sc.workout] ? DATA.workouts[sc.workout].length + ' exercises' : 'Recovery';
+    r.innerHTML = '<div class="dd">' + sc.day + '</div><div class="wk"><b>' + (rr ? 'Rest + Mobility' : sc.workout) + '</b><small>' + n + '</small></div>' + (rr ? '' : '<div class="arw">\u203a</div>');
+    if (!rr) r.onclick = () => showWorkoutPreview(sc.workout);
+    wl.appendChild(r);
+  });
+}
+
+let selectedWorkoutName = '';
+
+function continueToday() {
+  const tw = todayWorkoutName();
+  if (tw && !isRest(tw)) {
+    showWorkoutPreview(tw);
+  }
+}
+
+function letsGo() {
+  if (selectedWorkoutName) {
+    startWorkout(selectedWorkoutName);
+  }
+}
+
+function showWorkoutPreview(name) {
+  selectedWorkoutName = name;
+  showView('preview');
+  setBar('Preview', name);
+  
+  document.getElementById('prevDay').textContent = 'Workout Preview';
+  document.getElementById('prevWorkout').textContent = name + ' · ~' + estMin(name) + ' min';
+  
+  const exs = DATA.workouts[name] || [];
+  let previewHtml = '<div class="rxlist">';
+  exs.forEach((ex, idx) => {
+    const rx = recommendation(ex);
+    ex.nextKg = rx.kg;
+    ex.targetReps = rx.target;
+    ex.rest = rx.rest;
+    ex.progressNote = rx.note;
+    
+    let wuHtml = '';
+    if (idx === 0) {
+      const w1 = calcWarmupRange(rx.kg, 0.4, 0.5);
+      const w2 = calcWarmupRange(rx.kg, 0.7, 0.8);
+      wuHtml = '<div style="font-size:11.5px;color:var(--accent);margin-top:2px">Warm-up: ' + w1 + ' x 10–12 reps · ' + w2 + ' x 5–6 reps</div>';
+    } else if (idx === 1) {
+      const feeler = calcWarmupRange(rx.kg, 0.6, 0.7);
+      wuHtml = '<div style="font-size:11.5px;color:var(--accent);margin-top:2px">Optional feeler: ' + feeler + ' x 6–8 reps</div>';
+    }
+    
+    const nextEx = exs[idx + 1];
+    const nextText = nextEx ? 'Next: ' + nextEx.exercise : 'Next: Finish workout!';
+    
+    previewHtml += `
+      <div class="rxrow">
+        <div class="rxmain">
+          <b>${idx + 1}. ${esc(ex.exercise)}</b>
+          <small>${ex.sets} sets · ${rx.target} reps · range ${rx.range} · rest ${rx.rest}s</small>
+          ${wuHtml}
+          <div style="font-size:11px;color:var(--muted);margin-top:3.5px;font-style:italic;font-weight:500">${nextText}</div>
+          <div class="rxnote">${esc(rx.note)}</div>
+        </div>
+        <div class="rxkg">${rx.kg} kg</div>
+      </div>
+    `;
+  });
+  previewHtml += '</div>';
+  
+  previewHtml += `
+    <div class="rxhelp" style="margin-top:-6px;margin-bottom:18px">
+      💡 <b>Straight sets instruction</b>: Use the same working weight for all sets. Add reps first. Increase weight next time after all sets hit the top reps.
+    </div>
+  `;
+  document.getElementById('prevWorkoutPreview').innerHTML = previewHtml;
+  
+  const letsGoBtn = document.getElementById('letsGoBtn');
+  if (exs.length > 0) {
+    letsGoBtn.style.display = '';
+  } else {
+    letsGoBtn.style.display = 'none';
+  }
+  showBack('goGym');
+}
+
+function startWorkout(name) {
+  const exs = DATA.workouts[name];
+  if (!exs) return;
+  
+  exs.forEach((ex, idx) => {
+    const rx = recommendation(ex);
+    ex.nextKg = rx.kg;
+    ex.targetReps = rx.target;
+    ex.rest = rx.rest;
+    ex.progressNote = rx.note;
+    
+    ex.warmups = [];
+    if (idx === 0) {
+      ex.warmups.push({ label: 'Warm-up 1', weight: calcWarmupRange(rx.kg, 0.4, 0.5), reps: '10–12', minPct: 0.4, maxPct: 0.5 });
+      ex.warmups.push({ label: 'Warm-up 2', weight: calcWarmupRange(rx.kg, 0.7, 0.8), reps: '5–6', minPct: 0.7, maxPct: 0.8 });
+    } else if (idx === 1) {
+      ex.warmups.push({ label: 'Optional Feeler', weight: calcWarmupRange(rx.kg, 0.6, 0.7), reps: '6–8', minPct: 0.6, maxPct: 0.7, optional: true });
+    }
+  });
+
+  S = {
+    name: name,
+    ei: 0,
+    si: 0,
+    wui: 0,
+    log: exs.map(e => ({ exercise: e.exercise, tier: e.tier, sets: [], warmupSetsCompleted: 0 })),
+    exs: exs
+  };
+  showBack('goGym');
+  renderSet();
+  showView('player');
+}
+
+function curEx() {
+  return S.exs[S.ei];
+}
+
+function renderSet() {
+  const e = curEx();
+  const hasWarmup = (e.warmups && S.wui < e.warmups.length);
+  setBar(S.name, 'Exercise ' + (S.ei + 1) + ' of ' + S.exs.length);
+  
+  let totalSets = 0, doneSets = 0;
+  S.exs.forEach((x, i) => {
+    totalSets += x.sets;
+    doneSets += S.log[i].sets.length;
+  });
+  document.getElementById('pfill').style.width = Math.round(doneSets / totalSets * 100) + '%';
+  document.getElementById('exName').textContent = e.exercise;
+  
+  const nextEx = S.exs[S.ei + 1];
+  const nextText = nextEx ? 'Next: ' + nextEx.exercise : 'Next: Finish workout!';
+  const nextExEl = document.getElementById('playerExNext');
+  if (nextExEl) {
+    nextExEl.textContent = nextText;
+  }
+  
+  const tierEl = document.getElementById('exTier');
+  tierEl.textContent = fmtTier(e.tier || '');
+  tierEl.className = 'tier ' + (e.tier || '');
+  
+  if (hasWarmup) {
+    document.getElementById('exSub').textContent = 'Warm-up phase \u00b7 ' + e.sets + ' working sets';
+  } else {
+    document.getElementById('exSub').textContent = e.sets + ' sets \u00b7 ' + exRest(e) + 's rest \u00b7 working ' + e.nextKg + ' kg';
+  }
+  
+  const url = GIFMAP[e.exercise];
+  const yt = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(e.exercise + ' exercise form');
+  const m = document.getElementById('media');
+  m.innerHTML = '<div class="ph"><div class="em">🏋️</div><div>' + e.exercise + '</div><div>(Demo unavailable)</div></div><a class="demo" target="_blank" href="' + yt + '">\u25b6 Demo</a>';
+  
+  if (url) {
+    const img = new Image();
+    img.onload = () => {
+      m.innerHTML = '<img src="' + url + '" alt=""><a class="demo" target="_blank" href="' + yt + '">\u25b6 Demo</a>';
+    };
+    img.onerror = () => {
+      m.innerHTML = '<div class="ph"><div class="em">🏋️</div><div>' + e.exercise + '</div><div>(Demo unavailable)</div></div><a class="demo" target="_blank" href="' + yt + '">\u25b6 Demo</a>';
+    };
+    img.src = url;
+  }
+  
+  const dots = document.getElementById('setDots');
+  dots.innerHTML = '';
+  for (let i = 0; i < e.sets; i++) {
+    const cc = document.createElement('div');
+    cc.className = 'sdot' + (hasWarmup ? '' : (i < S.si ? ' done' : i === S.si ? ' cur' : ''));
+    cc.textContent = i + 1;
+    dots.appendChild(cc);
+  }
+  
+  const cardEl = document.querySelector('.card');
+  if (hasWarmup) {
+    cardEl.classList.add('warmup-card');
+    const wu = e.warmups[S.wui];
+    document.getElementById('setLbl').textContent = wu.label + ' of ' + e.warmups.length;
+    document.getElementById('setTgt').innerHTML = 'Target: <b>' + wu.reps + ' reps</b> @ <b>' + wu.weight + '</b>. <button onclick="skipWarmups()" style="display:inline;color:var(--accent);font-size:12px;margin-left:8px;text-decoration:underline">Skip warm-ups</button>';
+    
+    const wuAvgWeight = Math.round(((e.nextKg * wu.minPct) + (e.nextKg * wu.maxPct)) / 2 / 2.5) * 2.5;
+    document.getElementById('wIn').value = Number.isFinite(wuAvgWeight) && wuAvgWeight > 0 ? wuAvgWeight : e.nextKg;
+    document.getElementById('rIn').value = topReps(wu.reps);
+    document.querySelector('.donebtn').textContent = '✓ Done warm-up';
+  } else {
+    cardEl.classList.remove('warmup-card');
+    const tgt = (e.targetReps != null ? e.targetReps : topReps(e.repTarget));
+    document.getElementById('setLbl').textContent = 'Set ' + (S.si + 1) + ' of ' + e.sets;
+    document.getElementById('setTgt').innerHTML = 'Target: <b>' + tgt + ' reps</b> @ <b>' + e.nextKg + ' kg</b> \u00b7 range ' + e.repTarget + '. Same weight for all working sets.';
+    
+    let defaultWeight = e.nextKg;
+    if (S.log[S.ei].sets.length > 0) {
+      defaultWeight = S.log[S.ei].sets[S.log[S.ei].sets.length - 1].kg;
+    }
+    document.getElementById('wIn').value = defaultWeight;
+    document.getElementById('rIn').value = tgt;
+    document.querySelector('.donebtn').textContent = '✓ Done working set';
+  }
+  
+  const nextBox = document.getElementById('playerNextUp');
+  if (S.ei + 1 < S.exs.length) {
+    const nextExObj = S.exs[S.ei + 1];
+    const nextRx = recommendation(nextExObj);
+    let nextWuText = '';
+    if (S.ei + 1 === 1) {
+      const feeler = calcWarmupRange(nextRx.kg, 0.6, 0.7);
+      nextWuText = ' · Feeler: ' + feeler + ' x 6–8';
+    }
+    nextBox.innerHTML = `
+      <div class="hdr">Next up</div>
+      <div class="name">${nextExObj.exercise}</div>
+      <div class="desc">${nextRx.kg} kg · ${nextExObj.sets} sets · ${nextRx.target} reps${nextWuText}</div>
+    `;
+    nextBox.style.display = '';
+  } else {
+    nextBox.innerHTML = '';
+    nextBox.style.display = 'none';
+  }
+}
+
+function bump(f, d) {
+  const el = document.getElementById(f === 'w' ? 'wIn' : 'rIn');
+  let v = parseFloat(el.value) || 0;
+  v += f === 'w' ? d * 2.5 : d;
+  if (v < 0) v = 0;
+  el.value = f === 'w' ? (Math.round(v * 10) / 10) : Math.round(v);
+}
+
+function prevSet() {
+  if (S.wui > 0) {
+    S.wui--;
+    S.log[S.ei].warmupSetsCompleted = S.wui;
+    renderSet();
+  } else if (S.si > 0) {
+    S.si--;
+    S.log[S.ei].sets.pop();
+    renderSet();
+  } else if (S.ei > 0) {
+    S.ei--;
+    const prevEx = S.exs[S.ei];
+    if (S.log[S.ei].sets.length > 0) {
+      S.si = S.log[S.ei].sets.length - 1;
+      S.log[S.ei].sets.pop();
+      S.wui = prevEx.warmups.length;
+    } else if (S.log[S.ei].warmupSetsCompleted > 0) {
+      S.si = 0;
+      S.wui = S.log[S.ei].warmupSetsCompleted - 1;
+      S.log[S.ei].warmupSetsCompleted = S.wui;
+    } else {
+      S.si = 0;
+      S.wui = 0;
+    }
+    renderSet();
+  }
+}
+
+function skipExercise() {
+  nextExercise(false);
+}
+
+function skipWarmups() {
+  const e = curEx();
+  if (e.warmups) {
+    S.wui = e.warmups.length;
+    S.log[S.ei].warmupSetsCompleted = S.wui;
+  }
+  renderSet();
+}
+
+function doneSet() {
+  const e = curEx();
+  const hasWarmup = (e.warmups && S.wui < e.warmups.length);
+  
+  let w = parseFloat(document.getElementById('wIn').value) || 0;
+  let r = parseInt(document.getElementById('rIn').value) || 0;
+  if (w < 0) w = 0;
+  if (w > 500) w = 500;
+  if (r < 0) r = 0;
+  if (r > 100) r = 100;
+  
+  if (hasWarmup) {
+    S.wui++;
+    S.log[S.ei].warmupSetsCompleted = S.wui;
+    startRest(true, 30);
+    renderSet();
+  } else {
+    S.log[S.ei].sets.push({ kg: w, reps: r });
+    if (S.si + 1 < e.sets) {
+      S.si++;
+      renderSet();
+      startRest(false);
+    } else {
+      nextExercise(true);
+    }
+  }
+}
+
+function nextExercise(rested) {
+  if (S.ei + 1 < S.exs.length) {
+    S.ei++;
+    S.si = 0;
+    S.wui = 0;
+    renderSet();
+    if (rested) startRest(false);
+  } else {
+    finishWorkout();
+  }
+}
+
+function startRest(isWarmup, customSecs) {
+  const e = curEx();
+  const secs = customSecs || exRest(e);
+  rest.total = secs;
+  rest.t = secs;
+  
+  let nextInfo = '';
+  if (isWarmup) {
+    if (S.wui < e.warmups.length) {
+      const nextWu = e.warmups[S.wui];
+      nextInfo = 'Next: <b>Warm-up ' + (S.wui + 1) + '</b> \u00b7 ' + nextWu.weight + ' x ' + nextWu.reps;
+    } else {
+      nextInfo = 'Next: <b>Working Set 1</b> \u00b7 ' + e.nextKg + ' kg';
+    }
+    document.getElementById('restCap').textContent = 'Rest \u00b7 Warm-up';
+  } else {
+    if (S.si < e.sets) {
+      let defaultWeight = e.nextKg;
+      if (S.log[S.ei].sets.length > 0) {
+        defaultWeight = S.log[S.ei].sets[S.log[S.ei].sets.length - 1].kg;
+      }
+      const tgt = (e.targetReps != null ? e.targetReps : topReps(e.repTarget));
+      nextInfo = 'Next Set: <b>Set ' + (S.si + 1) + '</b> of ' + e.exercise + ' \u00b7 ' + defaultWeight + ' kg x ' + tgt + ' reps';
+    } else if (S.ei + 1 < S.exs.length) {
+      const nextEx = S.exs[S.ei + 1];
+      const nextRx = recommendation(nextEx);
+      nextInfo = 'Next Exercise: <b>' + nextEx.exercise + '</b> \u00b7 ' + nextRx.kg + ' kg';
+    }
+    document.getElementById('restCap').textContent = 'Rest \u00b7 ' + fmtTier(e.tier || '');
+  }
+  
+  document.getElementById('nextUp').innerHTML = nextInfo;
+  document.getElementById('rest').classList.add('active');
+  drawRest();
+  clearInterval(rest.iv);
+  rest.iv = setInterval(() => {
+    rest.t--;
+    if (rest.t <= 0) {
+      endRest();
+      ding();
+    } else {
+      drawRest();
+    }
+  }, 1000);
+}
+
+function drawRest() {
+  const mm = Math.floor(rest.t / 60), ss = rest.t % 60;
+  document.getElementById('restTime').textContent = mm + ':' + String(ss).padStart(2, '0');
+  const frac = rest.t / rest.total;
+  document.getElementById('ringFg').style.strokeDashoffset = (283 * (1 - frac)).toFixed(1);
+}
+
+function adjRest(d) {
+  rest.t = Math.max(1, rest.t + d);
+  rest.total = Math.max(rest.total, rest.t);
+  drawRest();
+}
+
+function endRest() {
+  clearInterval(rest.iv);
+  document.getElementById('rest').classList.remove('active');
+}
+
+function ding() {
+  try {
+    const a = new (window.AudioContext || window.webkitAudioContext)();
+    const o = a.createOscillator(), g = a.createGain();
+    o.connect(g);
+    g.connect(a.destination);
+    o.type = 'sine';
+    o.frequency.value = 880;
+    g.gain.setValueAtTime(.001, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(.4, a.currentTime + .02);
+    g.gain.exponentialRampToValueAtTime(.001, a.currentTime + .6);
+    o.start();
+    o.stop(a.currentTime + .6);
+  } catch (e) { }
+  if (navigator.vibrate) navigator.vibrate([200, 80, 200]);
+}
+
+function finishWorkout() {
+  let vol = 0, workingSetsCount = 0, repsCount = 0, warmupsCount = 0;
+  let progressedList = [];
+  let repeatList = [];
+  
+  S.log.forEach((x, idx) => {
+    const e = S.exs[idx];
+    const range = parseRange(e.repTarget);
+    warmupsCount += x.warmupSetsCompleted || 0;
+    
+    if (x.sets.length > 0) {
+      workingSetsCount += x.sets.length;
+      x.sets.forEach(s => {
+        vol += s.kg * s.reps;
+        repsCount += s.reps;
+      });
+      
+      const hitTop = x.sets.length >= e.sets && x.sets.every(s => s.reps >= range.max && s.kg >= e.nextKg);
+      if (hitTop) {
+        const nextKg = Math.round((e.nextKg + 2.5) / 2.5) * 2.5;
+        progressedList.push({ name: e.exercise, nextKg: nextKg });
+        e.nextKg = nextKg;
+        e.targetReps = range.min;
+      } else {
+        repeatList.push({ name: e.exercise, target: range.max });
+        const lowest = Math.min(...x.sets.map(s => s.reps));
+        e.targetReps = Math.min(range.max, lowest + 1);
+      }
+    }
+  });
+  
+  lsSet('jae_remote_plan', {
+    workouts: DATA.workouts,
+    schedule: DATA.schedule,
+    restDefaults: DATA.restDefaults,
+    tiers: DATA.tiers,
+    meta: DATA.meta,
+    workSpots: DATA.workSpots,
+    food: DATA.food
+  });
+  if (typeof syncPush === 'function') {
+    syncPush('jae_remote_plan', {
+      workouts: DATA.workouts,
+      schedule: DATA.schedule,
+      restDefaults: DATA.restDefaults,
+      tiers: DATA.tiers,
+      meta: DATA.meta,
+      workSpots: DATA.workSpots,
+      food: DATA.food
+    });
+  }
+  
+  document.getElementById('sumTitle').textContent = S.name + ' \u2014 Workout complete! 🔥';
+  document.getElementById('sumStats').innerHTML = 
+    stat(workingSetsCount, 'Working sets') + 
+    stat(warmupsCount, 'Warm-up sets') + 
+    stat(repsCount, 'Total reps') + 
+    stat(Math.round(vol), 'kg volume');
+  
+  let breakdownHtml = '<div style="margin-top:12px;display:flex;flex-direction:column;gap:12px">';
+  
+  if (progressedList.length > 0) {
+    breakdownHtml += `
+      <div class="card" style="border-color:var(--good);background:rgba(16,185,129,0.05)">
+        <b style="color:var(--good)">🚀 Progressed (Weight Up!)</b>
+        <div style="font-size:12.5px;margin-top:4px;color:var(--muted)">
+          ${progressedList.map(p => '· <b>' + p.name + '</b>: next time ' + p.nextKg + ' kg').join('<br>')}
+        </div>
+      </div>
+    `;
+  }
+  
+  if (repeatList.length > 0) {
+    breakdownHtml += `
+      <div class="card">
+        <b>🔄 Repeat same weight</b>
+        <div style="font-size:12.5px;margin-top:4px;color:var(--muted)">
+          ${repeatList.map(r => '· <b>' + r.name + '</b>: need all sets to hit ' + r.target + ' reps').join('<br>')}
+        </div>
+      </div>
+    `;
+  }
+  
+  breakdownHtml += '<div class="sectit">Exercise log</div><div class="rxlist">';
+  S.log.forEach(x => {
+    if (!x.sets.length) return;
+    breakdownHtml += `
+      <div class="rxrow">
+        <div class="rxmain">
+          <b>${x.exercise}</b>
+          <small>Warmups: ${x.warmupSetsCompleted} completed</small>
+        </div>
+        <div style="font-size:12.5px;font-weight:600" class="num">
+          ${x.sets.map(s => s.reps + '×' + s.kg + 'k').join(', ')}
+        </div>
+      </div>
+    `;
+  });
+  breakdownHtml += '</div></div>';
+  
+  document.getElementById('sumList').innerHTML = breakdownHtml;
+  S.summary = { vol: Math.round(vol), sets: workingSetsCount };
+  setBar('Summary', '');
+  showBack('goGym');
+  showView('summary');
+}
+
+function saveSession() {
+  const hist = lsGet('jae_sessions', []);
+  const rec = { date: new Date().toISOString(), name: S.name, vol: S.summary.vol, sets: S.summary.sets, log: S.log };
+  hist.unshift(rec);
+  var _h = hist.slice(0, 200);
+  lsSet('jae_sessions', _h);
+  syncPush('jae_sessions', _h);
+  
+  const entries = [];
+  S.log.forEach(x => x.sets.forEach((s, i) => entries.push({ exercise: x.exercise, set: i + 1, kg: s.kg, reps: s.reps })));
+  pushRemote({ type: 'session', date: rec.date, workout: S.name, entries: entries });
+  toast('Saved ✓ synced to your sheet');
+  setTimeout(() => { window.location.href = 'index.html'; }, 800);
+}
+
+function openDrawer() {
+  const overlay = document.getElementById('drawerOverlay');
+  const drawer = document.getElementById('workoutDrawer');
+  const content = document.getElementById('drawerContent');
+  
+  let html = '';
+  S.exs.forEach((e, idx) => {
+    const isCurrent = (idx === S.ei);
+    const isDone = (idx < S.ei);
+    const logSets = S.log[idx].sets || [];
+    
+    let wuText = '';
+    if (e.warmups && e.warmups.length > 0) {
+      wuText = '<div class="dr-wu">Warm-ups completed: ' + S.log[idx].warmupSetsCompleted + '/' + e.warmups.length + ' (' + e.warmups.map(w => w.weight + ' x ' + w.reps).join(', ') + ')</div>';
+    }
+    
+    let progressText = '';
+    if (logSets.length > 0) {
+      progressText = '<div style="font-size:11.5px;color:var(--good);margin-top:2px">Logged: ' + logSets.map(s => s.reps + '×' + s.kg + 'kg').join(', ') + '</div>';
+    }
+    
+    const nextEx = S.exs[idx + 1];
+    const nextText = nextEx ? 'Next: ' + nextEx.exercise : 'Next: Finish workout!';
+    
+    html += `
+      <div class="dr-item ${isCurrent ? 'current' : ''} ${isDone ? 'done' : ''}">
+        <div class="dr-main">
+          <div class="dr-name">${isDone ? '✓ ' : ''}${e.exercise}</div>
+          <div class="dr-details">
+            ${e.sets} sets · range ${e.repTarget} · rest ${exRest(e)}s
+          </div>
+          ${wuText}
+          ${progressText}
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;font-style:italic;font-weight:500">${nextText}</div>
+        </div>
+        <div class="dr-weight">${e.nextKg} kg</div>
+      </div>
+    `;
+  });
+  
+  content.innerHTML = html;
+  overlay.style.display = 'block';
+  setTimeout(() => {
+    overlay.classList.add('active');
+    drawer.classList.add('active');
+  }, 10);
+}
+
+function closeDrawer() {
+  const overlay = document.getElementById('drawerOverlay');
+  const drawer = document.getElementById('workoutDrawer');
+  
+  overlay.classList.remove('active');
+  drawer.classList.remove('active');
+  setTimeout(() => {
+    overlay.style.display = 'none';
+  }, 200);
+}
+
+window.onload = function() {
+  goGym();
+};
+</script>
+</body>
+</html>

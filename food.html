@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0b0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>FAT BROKE - Fuel</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="lifeos.css">
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <button class="iconbtn" id="backBtn" style="display:none">←</button>
+    <div class="brand"><h2 id="barTitle">Fuel</h2><div class="sub" id="barSub">Nutrition</div></div>
+    <button class="iconbtn" id="editBtn" onclick="toggleEdit()" title="Edit">✎</button>
+    <a class="iconbtn" href="settings.html" title="Settings">⚙</a>
+  </div>
+
+  <div class="view active" id="food"></div>
+
+  <div class="tabbar">
+    <a id="tabToday" href="index.html"><span class="ic">🌞</span>Today</a>
+    <a id="tabGym" href="gym.html"><span class="ic">🏋️</span>Gym</a>
+    <a id="tabWork" href="work.html"><span class="ic">💼</span>Work</a>
+    <a id="tabFood" class="on" href="food.html"><span class="ic">🍳</span>Fuel</a>
+    <a id="tabProg" href="progress.html"><span class="ic">📊</span>Progress</a>
+  </div>
+</div>
+
+<script src="shared.js"></script>
+<script>
+function setBar(t, s) {
+  document.getElementById('barTitle').textContent = t;
+  document.getElementById('barSub').textContent = s;
+}
+
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function goFood() {
+  showView('food');
+  setBar('Fuel', 'Nutrition');
+  hideBack();
+  renderFood();
+}
+
+function renderFood() {
+  var c = cfg();
+  var g = c.goals;
+  const s = foodState();
+  let kcal = 0, prot = 0, carb = 0, fat = 0;
+  
+  c.meals.forEach((m, i) => {
+    if (s.meals && s.meals[i]) {
+      kcal += m.kcal || 0;
+      prot += m.protein || 0;
+      carb += m.carbs || 0;
+      fat += m.fat || 0;
+    }
+  });
+  
+  var html = '<div class="eyebrow">Fuel</div><h1 class="title">Nutrition</h1>';
+  
+  if (EDIT) {
+    html += '<p class="muted-p">Edit your goals, meals and supplements. Add or remove anything.</p>';
+    html += '<div class="sectit">Daily goals</div><div class="foodgoals">';
+    [['kcal', 'Calories'], ['protein', 'Protein g'], ['carb', 'Carbs g'], ['fat', 'Fat g']].forEach(function (p) {
+      html += '<div class="field"><label>' + p[1] + '</label><input type="number" value="' + (g[p[0]] || 0) + '" oninput="setGoal(\'' + p[0] + '\',this.value)"></div>';
+    });
+    html += '</div>';
+    html += '<div class="sectit">Meals</div>';
+    c.meals.forEach(function (m, i) {
+      html += '<div class="esub"><input class="einp" value="' + esc(m.name) + '" oninput="setMeal(' + i + ',\'name\',this.value)"><input class="einp" style="max-width:62px" type="number" value="' + (m.kcal || 0) + '" oninput="setMeal(' + i + ',\'kcal\',this.value)" title="kcal"><input class="einp" style="max-width:54px" type="number" value="' + (m.protein || 0) + '" oninput="setMeal(' + i + ',\'protein\',this.value)" title="protein"><button onclick="delMeal(' + i + ')">\u00d7</button></div>';
+    });
+    html += '<button class="mini" style="margin-top:8px" onclick="addMeal()">+ Add meal</button>';
+    html += '<div class="sectit">Supplements</div>';
+    c.supps.forEach(function (sp, i) {
+      html += '<div class="esub"><input class="einp" value="' + esc(sp.name) + '" oninput="setSupp(' + i + ',\'name\',this.value)"><input class="einp" value="' + esc(sp.when) + '" oninput="setSupp(' + i + ',\'when\',this.value)" placeholder="when"><button onclick="delSupp(' + i + ')">\u00d7</button></div>';
+    });
+    html += '<button class="mini" style="margin-top:8px" onclick="addSupp()">+ Add supplement</button>';
+    document.getElementById('food').innerHTML = html;
+    return;
+  }
+  
+  html += '<div id="foodNudge"></div>';
+  
+  let kcalPct = Math.min(100, Math.round((kcal / (g.kcal || 1)) * 100));
+  let protPct = Math.min(100, Math.round((prot / (g.protein || 1)) * 100));
+  let carbPct = Math.min(100, Math.round((carb / (g.carb || 1)) * 100));
+  let fatPct = Math.min(100, Math.round((fat / (g.fat || 1)) * 100));
+  
+  html += '<div class="compact-macros">';
+  html += '  <div class="macro-box kcal">';
+  html += '    <div class="lbl">Calories</div>';
+  html += '    <div class="val">' + kcal + ' <span style="font-size:10px;font-weight:400;color:var(--muted)">/ ' + g.kcal + '</span></div>';
+  html += '    <div class="bar"><i style="width:' + kcalPct + '%"></i></div>';
+  html += '  </div>';
+  html += '  <div class="macro-box protein">';
+  html += '    <div class="lbl">Protein</div>';
+  html += '    <div class="val">' + prot + 'g <span style="font-size:10px;font-weight:400;color:var(--muted)">/ ' + g.protein + 'g</span></div>';
+  html += '    <div class="bar"><i style="width:' + protPct + '%"></i></div>';
+  html += '  </div>';
+  html += '  <div class="macro-box carbs">';
+  html += '    <div class="lbl">Carbs</div>';
+  html += '    <div class="val">' + carb + 'g <span style="font-size:10px;font-weight:400;color:var(--muted)">/ ' + g.carb + 'g</span></div>';
+  html += '    <div class="bar"><i style="width:' + carbPct + '%"></i></div>';
+  html += '  </div>';
+  html += '  <div class="macro-box fat">';
+  html += '    <div class="lbl">Fat</div>';
+  html += '    <div class="val">' + fat + 'g <span style="font-size:10px;font-weight:400;color:var(--muted)">/ ' + g.fat + 'g</span></div>';
+  html += '    <div class="bar"><i style="width:' + fatPct + '%"></i></div>';
+  html += '  </div>';
+  html += '</div>';
+  
+  html += '<div class="sectit">Supplements</div>';
+  html += '<div class="counter-grid-3" id="suppGrid"></div>';
+  
+  html += '<div class="sectit">Prepped meals</div>';
+  html += '<div id="mealList"></div>';
+  
+  document.getElementById('food').innerHTML = html;
+  
+  const tw = todayWorkoutName();
+  const ate = s.meals && s.meals.some(m => m);
+  const fn = document.getElementById('foodNudge');
+  if (fn) {
+    if (!isRest(tw) && !ate && new Date().getHours() < 12) {
+      fn.innerHTML = '<div class="callout"><span>⚡</span><div>Training today \u2014 fuel up. Quick carbs before lifting keeps your heavy sets strong.</div></div>';
+    } else {
+      fn.innerHTML = '';
+    }
+  }
+  
+  const ml = document.getElementById('mealList');
+  ml.innerHTML = '';
+  c.meals.forEach((m, i) => {
+    const d = document.createElement('div');
+    const isEaten = s.meals && s.meals[i];
+    d.className = 'meal' + (isEaten ? ' on' : '');
+    d.innerHTML = '<div class="cbx ' + (isEaten ? 'on' : '') + '">\u2713</div><div class="mn"><b>' + esc(m.name) + '</b><small>' + (m.kcal || 0) + ' kcal \u00b7 ' + (m.protein || 0) + 'g P</small></div>';
+    d.onclick = () => {
+      const st = foodState();
+      st.meals[i] = !st.meals[i];
+      saveFoodState(st);
+      renderFood();
+      pushFood();
+    };
+    ml.appendChild(d);
+  });
+  
+  const sg = document.getElementById('suppGrid');
+  sg.innerHTML = '';
+  c.supps.forEach((sp, i) => {
+    const count = s.supps[i] || 0;
+    const d = document.createElement('div');
+    d.className = 'counter' + (count > 0 ? ' on' : '');
+    d.innerHTML = '<div class="cl"><span class="ce">💊</span><div class="cn"><b>' + esc(sp.name) + '</b><small>' + esc(sp.when || '') + '</small></div></div><div class="cc"><button onclick="adjSupp(' + i + ',-1)">−</button><div class="cv num">' + count + '</div><button onclick="adjSupp(' + i + ',1)">+</button></div>';
+    sg.appendChild(d);
+  });
+}
+
+function adjSupp(i, d) {
+  const s = foodState();
+  if (!s.supps) s.supps = [];
+  s.supps[i] = Math.max(0, (parseInt(s.supps[i]) || 0) + d);
+  saveFoodState(s);
+  renderFood();
+  clearTimeout(window._fc);
+  window._fc = setTimeout(pushFood, 1200);
+}
+
+function adjCount(k, d) {
+  const s = foodState();
+  s[k] = Math.max(0, (s[k] || 0) + d);
+  saveFoodState(s);
+  renderFood();
+  clearTimeout(window._fc);
+  window._fc = setTimeout(pushFood, 1200);
+}
+
+function setGoal(k, v) {
+  var c = cfg();
+  c.goals[k] = parseFloat(v) || 0;
+  saveCfg(c);
+}
+
+function setMeal(i, f, v) {
+  var c = cfg();
+  if (!c.meals[i]) return;
+  c.meals[i][f] = (f === 'name') ? v : (parseFloat(v) || 0);
+  saveCfg(c);
+}
+
+function addMeal() {
+  var c = cfg();
+  c.meals.push({ name: 'New meal', kcal: 0, protein: 0, carbs: 0, fat: 0 });
+  saveCfg(c);
+  renderFood();
+}
+
+function delMeal(i) {
+  var c = cfg();
+  c.meals.splice(i, 1);
+  saveCfg(c);
+  renderFood();
+}
+
+function setSupp(i, f, v) {
+  var c = cfg();
+  if (!c.supps[i]) return;
+  c.supps[i][f] = v;
+  saveCfg(c);
+}
+
+function addSupp() {
+  var c = cfg();
+  c.supps.push({ name: 'New supplement', when: '' });
+  saveCfg(c);
+  renderFood();
+}
+
+function delSupp(i) {
+  var c = cfg();
+  c.supps.splice(i, 1);
+  saveCfg(c);
+  renderFood();
+}
+
+function foodState() {
+  var c = cfg();
+  const k = 'jae_food_' + todayKey();
+  let s = lsGet(k, null);
+  if (!s) {
+    s = { meals: c.meals.map(() => false), water: 0, coffee: 0, supps: c.supps.map(() => 0) };
+    lsSet(k, s);
+  }
+  if (!s.meals || s.meals.length !== c.meals.length) {
+    s.meals = c.meals.map((m, i) => (s.meals && s.meals[i]) || false);
+  }
+  if (!s.supps || s.supps.length !== c.supps.length) {
+    s.supps = c.supps.map((m, i) => {
+      let val = s.supps && s.supps[i];
+      if (typeof val === 'boolean') return val ? 1 : 0;
+      return parseInt(val) || 0;
+    });
+  } else {
+    s.supps = s.supps.map((val) => {
+      if (typeof val === 'boolean') return val ? 1 : 0;
+      return parseInt(val) || 0;
+    });
+  }
+  return s;
+}
+
+function saveFoodState(s) {
+  var k = 'jae_food_' + todayKey();
+  lsSet(k, s);
+  syncPush(k, s);
+}
+
+function refresh() {
+  renderFood();
+}
+
+window.onload = function() {
+  goFood();
+};
+</script>
+</body>
+</html>
