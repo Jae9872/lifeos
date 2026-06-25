@@ -1,7 +1,7 @@
 (function(){
   var BODY_KEY='jae_body_logs_v1';
   var INC=2.5;
-  var RESTS={Heavy:105,Hypertrophy:75,Pump:45};
+  var RESTS={Heavy:90,Hypertrophy:75,Pump:45};
 
   function lsGet(k,d){try{var v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}}
   function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
@@ -52,7 +52,6 @@
 
   window.saveBodyLog=function(){var w=parseFloat((document.getElementById('bodyWeightIn')||{}).value);var waist=parseFloat((document.getElementById('bodyWaistIn')||{}).value);if(!Number.isFinite(w)&&!Number.isFinite(waist)){if(typeof toast==='function')toast('Add weight or waist first');return;}var date=todayKey();var a=logs().filter(function(x){return x.date!==date;});a.unshift({date:date,weight:Number.isFinite(w)?w:null,waist:Number.isFinite(waist)?waist:null});setLogs(a);if(typeof pushRemote==='function')pushRemote({type:'body',date:date,weight:Number.isFinite(w)?w:null,waist:Number.isFinite(waist)?waist:null});if(typeof toast==='function')toast('Body progress saved');renderBodyProgress();};
   window.delBodyLog=function(date){setLogs(logs().filter(function(x){return x.date!==date;}));renderBodyProgress();};
-
   function addBodyToProgress(){var prog=document.getElementById('progress');if(!prog||document.getElementById('bodyProgressBox'))return;var marker=document.createElement('div');marker.innerHTML='<div class="sectit">Body progress</div><div id="bodyProgressBox"></div>';var ex=document.getElementById('exProg');if(ex&&ex.parentNode)ex.parentNode.insertBefore(marker,ex.previousElementSibling||ex);else prog.appendChild(marker);renderBodyProgress();}
   function latestExerciseLog(name){var hist=lsGet('jae_sessions',[]);for(var i=0;i<hist.length;i++){var log=hist[i].log||[];for(var j=0;j<log.length;j++)if(log[j].exercise===name&&log[j].sets&&log[j].sets.length)return log[j];}return null;}
   function recommendation(ex){var r=parseRange(ex.repTarget),base=Number.isFinite(+ex.nextKg)?+ex.nextKg:(Number.isFinite(+ex.startKg)?+ex.startKg:0);var lastLog=latestExerciseLog(ex.exercise),kg=base,target=r.min,note='Start here';if(lastLog&&lastLog.sets&&lastLog.sets.length){var sets=lastLog.sets.filter(function(s){return Number.isFinite(+s.kg)&&Number.isFinite(+s.reps);});if(sets.length){kg=+sets[sets.length-1].kg||base;var sameKg=sets.filter(function(s){return Math.abs((+s.kg)-kg)<.01;});var hitTop=sameKg.length>=Math.min(ex.sets||sameKg.length,sameKg.length)&&sameKg.every(function(s){return +s.reps>=r.max;});if(hitTop){kg=roundKg(kg+INC);target=r.min;note='Weight up, rebuild reps';}else{var low=Math.min.apply(null,sameKg.map(function(s){return +s.reps;}));target=Math.min(r.max,Math.max(r.min,low+1));note='Add reps before weight';}}}return{kg:roundKg(kg),target:target,range:r.min+'-'+r.max,rest:restFor(ex),note:note};}
