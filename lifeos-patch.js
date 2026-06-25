@@ -17,7 +17,6 @@
   function diff(v){return !Number.isFinite(v)?'—':((v>0?'+':'')+v.toFixed(1));}
   function parseRange(t){var m=String(t||'').match(/(\d+)\s*-\s*(\d+)/);if(m)return{min:+m[1],max:+m[2]};m=String(t||'').match(/(\d+)/);return m?{min:+m[1],max:+m[1]}:{min:8,max:12};}
   function roundKg(x){return Math.round((x||0)/INC)*INC;}
-  function incFor(ex){return INC;}
   function restFor(ex){return RESTS[ex.tier]||75;}
 
   function injectStyles(){
@@ -64,120 +63,21 @@
   };
   window.delBodyLog=function(date){setLogs(logs().filter(function(x){return x.date!==date;}));renderBodyProgress();};
 
-  function addBodyToProgress(){
-    var prog=document.getElementById('progress');if(!prog||document.getElementById('bodyProgressBox'))return;
-    var marker=document.createElement('div');
-    marker.innerHTML='<div class="sectit">Body progress</div><div id="bodyProgressBox"></div>';
-    var ex=document.getElementById('exProg');
-    if(ex&&ex.parentNode)ex.parentNode.insertBefore(marker,ex.previousElementSibling||ex);
-    else prog.appendChild(marker);
-    renderBodyProgress();
-  }
+  function addBodyToProgress(){var prog=document.getElementById('progress');if(!prog||document.getElementById('bodyProgressBox'))return;var marker=document.createElement('div');marker.innerHTML='<div class="sectit">Body progress</div><div id="bodyProgressBox"></div>';var ex=document.getElementById('exProg');if(ex&&ex.parentNode)ex.parentNode.insertBefore(marker,ex.previousElementSibling||ex);else prog.appendChild(marker);renderBodyProgress();}
 
-  function latestExerciseLog(name){
-    var hist=lsGet('jae_sessions',[]);
-    for(var i=0;i<hist.length;i++){
-      var log=hist[i].log||[];
-      for(var j=0;j<log.length;j++)if(log[j].exercise===name&&log[j].sets&&log[j].sets.length)return log[j];
-    }
-    return null;
-  }
+  function latestExerciseLog(name){var hist=lsGet('jae_sessions',[]);for(var i=0;i<hist.length;i++){var log=hist[i].log||[];for(var j=0;j<log.length;j++)if(log[j].exercise===name&&log[j].sets&&log[j].sets.length)return log[j];}return null;}
+  function recommendation(ex){var r=parseRange(ex.repTarget),base=Number.isFinite(+ex.nextKg)?+ex.nextKg:(Number.isFinite(+ex.startKg)?+ex.startKg:0);var lastLog=latestExerciseLog(ex.exercise),kg=base,target=r.min,note='Start here';if(lastLog&&lastLog.sets&&lastLog.sets.length){var sets=lastLog.sets.filter(function(s){return Number.isFinite(+s.kg)&&Number.isFinite(+s.reps);});if(sets.length){kg=+sets[sets.length-1].kg||base;var sameKg=sets.filter(function(s){return Math.abs((+s.kg)-kg)<.01;});var hitTop=sameKg.length>=Math.min(ex.sets||sameKg.length,sameKg.length)&&sameKg.every(function(s){return +s.reps>=r.max;});if(hitTop){kg=roundKg(kg+INC);target=r.min;note='Weight up, rebuild reps';}else{var low=Math.min.apply(null,sameKg.map(function(s){return +s.reps;}));target=Math.min(r.max,Math.max(r.min,low+1));note='Add reps before weight';}}}return{kg:roundKg(kg),target:target,range:r.min+'-'+r.max,rest:restFor(ex),note:note};}
+  function prepWorkout(name){if(!window.DATA||!DATA.workouts||!DATA.workouts[name])return;DATA.workouts[name].forEach(function(ex){var rx=recommendation(ex);ex.nextKg=rx.kg;ex.targetReps=rx.target;ex.rest=rx.rest;ex.progressNote=rx.note;});}
+  function renderTodayWeights(name){injectStyles();var exs=(window.DATA&&DATA.workouts&&DATA.workouts[name])||[];if(!exs.length)return '';var html='<div class="sectit">Today weights</div><div class="rxlist">';exs.forEach(function(ex){var rx=recommendation(ex);html+='<div class="rxrow"><div class="rxmain"><b>'+esc(ex.exercise)+'</b><small>'+rx.target+' reps · range '+rx.range+' · rest '+rx.rest+'s</small><div class="rxnote">'+esc(rx.note)+'</div></div><div class="rxkg">'+rx.kg+' kg</div></div>';});html+='</div><div class="rxhelp">Rule: add reps inside the range first. When you hit top reps on all working sets, next time goes up by 2.5kg and reps reset to the lower end.</div>';return html;}
+  function addWeightsToGym(){var gym=document.getElementById('gym');if(!gym)return;var old=document.getElementById('todayWeightsBox');if(old)old.remove();var btn=document.getElementById('startBtn'),name=(typeof todayWorkoutName==='function')?todayWorkoutName():null;if(!btn||!name||/rest/i.test(name))return;prepWorkout(name);var box=document.createElement('div');box.id='todayWeightsBox';box.innerHTML=renderTodayWeights(name);btn.parentNode.insertBefore(box,btn.nextSibling);}
+  function moveTaskInputTop(){var today=document.getElementById('today');if(!today)return;var taskIn=document.getElementById('planTaskIn'),taskList=document.getElementById('planTasks');if(!taskIn||!taskList)return;var addrow=taskIn.closest('.addrow');if(!addrow)return;var sect=[].slice.call(today.querySelectorAll('.sectit')).find(function(x){return x.textContent.indexOf('Add your own task')>=0;});if(!sect||sect.dataset.moved)return;sect.dataset.moved='1';var anchor=today.querySelector('.fhead');if(anchor&&anchor.nextSibling){today.insertBefore(taskList,anchor.nextSibling);today.insertBefore(addrow,taskList);today.insertBefore(sect,addrow);}}
 
-  function recommendation(ex){
-    var r=parseRange(ex.repTarget),base=Number.isFinite(+ex.nextKg)?+ex.nextKg:(Number.isFinite(+ex.startKg)?+ex.startKg:0);
-    var lastLog=latestExerciseLog(ex.exercise),kg=base,target=r.min,note='Start here';
-    if(lastLog&&lastLog.sets&&lastLog.sets.length){
-      var sets=lastLog.sets.filter(function(s){return Number.isFinite(+s.kg)&&Number.isFinite(+s.reps);});
-      if(sets.length){
-        kg=+sets[sets.length-1].kg||base;
-        var sameKg=sets.filter(function(s){return Math.abs((+s.kg)-kg)<.01;});
-        var hitTop=sameKg.length>=Math.min(ex.sets||sameKg.length,sameKg.length)&&sameKg.every(function(s){return +s.reps>=r.max;});
-        if(hitTop){kg=roundKg(kg+incFor(ex));target=r.min;note='Weight up, rebuild reps';}
-        else{var low=Math.min.apply(null,sameKg.map(function(s){return +s.reps;}));target=Math.min(r.max,Math.max(r.min,low+1));note='Add reps before weight';}
-      }
-    }
-    return{kg:roundKg(kg),target:target,range:r.min+'-'+r.max,rest:restFor(ex),note:note};
-  }
-
-  function prepWorkout(name){
-    if(!window.DATA||!DATA.workouts||!DATA.workouts[name])return;
-    DATA.workouts[name].forEach(function(ex){var rx=recommendation(ex);ex.nextKg=rx.kg;ex.targetReps=rx.target;ex.rest=rx.rest;ex.progressNote=rx.note;});
-  }
-
-  function renderTodayWeights(name){
-    injectStyles();
-    var exs=(window.DATA&&DATA.workouts&&DATA.workouts[name])||[];if(!exs.length)return '';
-    var html='<div class="sectit">Today weights</div><div class="rxlist">';
-    exs.forEach(function(ex){var rx=recommendation(ex);html+='<div class="rxrow"><div class="rxmain"><b>'+esc(ex.exercise)+'</b><small>'+rx.target+' reps · range '+rx.range+' · rest '+rx.rest+'s</small><div class="rxnote">'+esc(rx.note)+'</div></div><div class="rxkg">'+rx.kg+' kg</div></div>';});
-    html+='</div><div class="rxhelp">Rule: add reps inside the range first. When you hit the top reps on all working sets, the next time goes up by 2.5kg and reps reset to the lower end.</div>';
-    return html;
-  }
-
-  function addWeightsToGym(){
-    var gym=document.getElementById('gym');if(!gym||document.getElementById('todayWeightsBox'))return;
-    var btn=document.getElementById('startBtn'),name=(typeof todayWorkoutName==='function')?todayWorkoutName():null;if(!btn||!name||/rest/i.test(name))return;
-    prepWorkout(name);
-    var box=document.createElement('div');box.id='todayWeightsBox';box.innerHTML=renderTodayWeights(name);
-    btn.parentNode.insertBefore(box,btn.nextSibling);
-  }
-
-  function moveTaskInputTop(){
-    var today=document.getElementById('today');if(!today)return;
-    var taskIn=document.getElementById('planTaskIn'),taskList=document.getElementById('planTasks');if(!taskIn||!taskList)return;
-    var addrow=taskIn.closest('.addrow');if(!addrow)return;
-    var sect=[].slice.call(today.querySelectorAll('.sectit')).find(function(x){return x.textContent.indexOf('Add your own task')>=0;});
-    if(!sect||sect.dataset.moved)return;
-    sect.dataset.moved='1';
-    var anchor=today.querySelector('.fhead');
-    if(anchor&&anchor.nextSibling){today.insertBefore(taskList,anchor.nextSibling);today.insertBefore(addrow,taskList);today.insertBefore(sect,addrow);} 
-  }
-
-  function patchRest(){
-    if(window.__lifeosRestPatch)return;window.__lifeosRestPatch=true;
-    window.exRest=function(e){return restFor(e||{});};
-  }
-
-  function patchStartWorkout(){
-    if(window.__lifeosStartPatch||typeof startWorkout!=='function')return;window.__lifeosStartPatch=true;
-    var old=startWorkout;
-    window.startWorkout=function(name){prepWorkout(name);return old.apply(this,arguments);};
-  }
-
-  function patchRenderSetWeight(){
-    if(window.__lifeosSetPatch||typeof renderSet!=='function')return;window.__lifeosSetPatch=true;
-    var oldRender=renderSet;
-    window.renderSet=function(){
-      oldRender.apply(this,arguments);
-      try{
-        if(!window.S)return;
-        var e=S.exs[S.ei],prev=S.log&&S.log[S.ei]&&S.log[S.ei].sets&&S.log[S.ei].sets[S.log[S.ei].sets.length-1];
-        if(prev&&document.getElementById('wIn'))document.getElementById('wIn').value=prev.kg;
-        var sub=document.getElementById('exSub');
-        if(sub&&e)sub.textContent=e.sets+' sets · '+restFor(e)+'s rest · '+(e.progressNote||'Progress')+' · working '+e.nextKg+' kg';
-      }catch(e){}
-    };
-  }
-
-  function patchGym(){
-    if(window.__lifeosGymPatch||typeof renderGym!=='function')return;window.__lifeosGymPatch=true;
-    var old=renderGym;
-    window.renderGym=function(){old.apply(this,arguments);addWeightsToGym();};
-  }
-
-  function patchProgress(){
-    if(window.__lifeosProgressPatch||typeof openProgress!=='function')return;window.__lifeosProgressPatch=true;
-    var old=openProgress;
-    window.openProgress=function(){old.apply(this,arguments);addBodyToProgress();};
-  }
-
-  function patchToday(){
-    if(window.__lifeosTodayPatch||typeof renderToday!=='function')return;window.__lifeosTodayPatch=true;
-    var old=renderToday;
-    window.renderToday=function(){old.apply(this,arguments);moveTaskInputTop();};
-  }
-
+  function patchRest(){if(window.__lifeosRestPatch)return;window.__lifeosRestPatch=true;window.exRest=function(e){return restFor(e||{});};}
+  function patchStartWorkout(){if(window.__lifeosStartPatch||typeof startWorkout!=='function')return;window.__lifeosStartPatch=true;var old=startWorkout;startWorkout=window.startWorkout=function(name){prepWorkout(name);return old.apply(this,arguments);};}
+  function patchRenderSetWeight(){if(window.__lifeosSetPatch||typeof renderSet!=='function')return;window.__lifeosSetPatch=true;var oldRender=renderSet;renderSet=window.renderSet=function(){oldRender.apply(this,arguments);try{if(!window.S)return;var e=S.exs[S.ei],prev=S.log&&S.log[S.ei]&&S.log[S.ei].sets&&S.log[S.ei].sets[S.log[S.ei].sets.length-1];if(prev&&document.getElementById('wIn'))document.getElementById('wIn').value=prev.kg;var sub=document.getElementById('exSub');if(sub&&e)sub.textContent=e.sets+' sets · '+restFor(e)+'s rest · '+(e.progressNote||'Progress')+' · working '+e.nextKg+' kg';}catch(e){}};}
+  function patchGym(){if(window.__lifeosGymPatch||typeof renderGym!=='function')return;window.__lifeosGymPatch=true;var old=renderGym;renderGym=window.renderGym=function(){old.apply(this,arguments);addWeightsToGym();};}
+  function patchProgress(){if(window.__lifeosProgressPatch||typeof openProgress!=='function')return;window.__lifeosProgressPatch=true;var old=openProgress;openProgress=window.openProgress=function(){old.apply(this,arguments);addBodyToProgress();};}
+  function patchToday(){if(window.__lifeosTodayPatch||typeof renderToday!=='function')return;window.__lifeosTodayPatch=true;var old=renderToday;renderToday=window.renderToday=function(){old.apply(this,arguments);moveTaskInputTop();};}
   function patchAll(){patchRest();patchStartWorkout();patchRenderSetWeight();patchGym();patchProgress();patchToday();moveTaskInputTop();if(window.VIEW==='progress')addBodyToProgress();if(window.VIEW==='gym')addWeightsToGym();}
-  patchAll();
-  setTimeout(patchAll,400);
-  setTimeout(patchAll,1200);
+  patchAll();setTimeout(patchAll,400);setTimeout(patchAll,1200);
 })();
