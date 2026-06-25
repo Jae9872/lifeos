@@ -1,1 +1,1 @@
-/* disabled unsafe placeholder patch */
+/* patch intentionally disabled after failed recovery attempt */
