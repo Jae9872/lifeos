@@ -1,12 +1,12 @@
 {
-  "name": "Jae Life OS",
-  "short_name": "Life OS",
+  "name": "FAT BROKE",
+  "short_name": "FAT BROKE",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0a0b0f",
-  "theme_color": "#0a0b0f",
+  "background_color": "#fafafb",
+  "theme_color": "#fafafb",
   "icons": [
     {
       "src": "icon-192.png",

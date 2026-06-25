@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0b0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>FAT BROKE - Work</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="lifeos.css">
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <button class="iconbtn" id="backBtn" style="display:none">←</button>
+    <div class="brand"><h2 id="barTitle">Work</h2><div class="sub" id="barSub">Deep work block</div></div>
+    <button class="iconbtn" id="editBtn" onclick="toggleEdit()" title="Edit">✎</button>
+    <a class="iconbtn" href="settings.html" title="Settings">⚙</a>
+  </div>
+
+  <div class="view active" id="work"></div>
+
+  <div class="view" id="spots">
+    <div class="eyebrow">Work spots</div>
+    <h1 class="title">Where to work</h1>
+    <p class="muted-p">Free seats first, paid desks when you want to lock in.</p>
+    <div id="spotCats"></div>
+  </div>
+
+  <div class="tabbar">
+    <a id="tabToday" href="index.html"><span class="ic">🌞</span>Today</a>
+    <a id="tabGym" href="gym.html"><span class="ic">🏋️</span>Gym</a>
+    <a id="tabWork" class="on" href="work.html"><span class="ic">💼</span>Work</a>
+    <a id="tabFood" href="food.html"><span class="ic">🍳</span>Fuel</a>
+    <a id="tabProg" href="progress.html"><span class="ic">📊</span>Progress</a>
+  </div>
+</div>
+
+<script src="shared.js"></script>
+<script>
+var SPOT_CATS = [
+  {
+    cat: '☕ Caf\u00e9s \u2014 buy a coffee', items: [
+      { name: 'Third Wave Coffee \u2014 Rajajinagar', area: 'Rajajinagar \u00b7 closest to home', cost: '~\u20b9250 coffee', note: 'Fast wifi, laptops welcome, techie regulars.', maps: 'Third Wave Coffee Rajajinagar Bangalore' },
+      { name: 'Paper & Pie \u2014 Indiranagar', area: 'Indiranagar', cost: 'Buy a coffee', note: 'Quiet, plug points everywhere, creative crowd.', maps: 'Paper and Pie Indiranagar' },
+      { name: 'Beanlore \u2014 HSR Layout', area: 'HSR Layout', cost: 'Buy a coffee', note: 'Work-friendly specialty cafe, engineers & founders.', maps: 'Beanlore HSR Layout' },
+      { name: 'Atta Galatta \u2014 Koramangala', area: 'Koramangala', cost: 'Buy a coffee', note: 'Calm bookstore-cafe, great for deep focus.', maps: 'Atta Galatta Koramangala' }
+    ]
+  },
+  {
+    cat: '🏢 Malls \u2014 free AC seating', items: [
+      { name: 'GT World Mall \u2014 Magadi Road', area: 'Magadi Road \u00b7 nearest mall', cost: 'Free seating / food court', note: 'Closest mall to Vijayanagar, AC, easy parking.', maps: 'GT World Mall Magadi Road Bangalore' },
+      { name: 'Orion Mall \u2014 Brigade Gateway', area: 'Rajajinagar', cost: 'Free seating \u00b7 cafes inside', note: 'Lakeside, Starbucks & food court, long-stay friendly.', maps: 'Orion Mall Rajajinagar' },
+      { name: 'Mantri Square \u2014 Malleshwaram', area: 'Malleshwaram', cost: 'Free seating / food court', note: 'Big, metro-connected, plenty of quiet corners.', maps: 'Mantri Square Mall Malleshwaram' }
+    ]
+  },
+  {
+    cat: '🚀 Startup spaces \u2014 day pass', items: [
+      { name: 'BHIVE Workspace \u2014 Koramangala', area: 'Koramangala', cost: 'Day pass ~\u20b9300', note: 'Heart of the startup scene \u2014 founders & events.', maps: 'BHIVE Workspace Koramangala' },
+      { name: 'WeWork Galaxy \u2014 Residency Road', area: 'Central / MG Road', cost: 'Day pass', note: 'Premium, unlimited coffee, phone booths.', maps: 'WeWork Galaxy Residency Road Bangalore' },
+      { name: '91springboard \u2014 Koramangala', area: 'Koramangala', cost: 'Day pass', note: 'Big community + frequent founder events.', maps: '91springboard Koramangala' },
+      { name: 'GoFloaters / myHQ (app)', area: 'Citywide', cost: '\u20b9200\u2013\u20b91000/day', note: 'Book the nearest desk on demand each day.', maps: 'GoFloaters Bangalore' }
+    ]
+  }
+];
+
+function setBar(t, s) {
+  document.getElementById('barTitle').textContent = t;
+  document.getElementById('barSub').textContent = s;
+}
+
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function goWork() {
+  showView('work');
+  setBar('Work', 'Deep work block');
+  const eb = document.getElementById('editBtn');
+  if (eb) eb.style.display = '';
+  hideBack();
+  renderWork();
+}
+
+function renderWork() {
+  var c = cfg(), s = workState();
+  var done = c.countries.filter(function (n) { return s.applied && s.applied[n]; }).length;
+  
+  var html = '<div class="eyebrow">Deep work \u00b7 11 to 6</div><h1 class="title">Work block</h1><p class="muted-p">Press start, do the reps. One fixed task: <b>Always apply</b>.</p>';
+  html += '<div class="timer"><div class="ts" id="focusState">Focus</div><div class="tv num" id="focusTime">25:00</div><div class="tb"><button class="pri" id="focusBtn" onclick="toggleFocus()">Start focus</button><button class="sec" onclick="resetFocus()">Reset</button></div><div class="seglbl" id="focusCount"></div></div>';
+  html += '<div class="sectit">Always apply <span style="font-weight:600;color:var(--faint);text-transform:none;letter-spacing:0">' + done + '/' + c.countries.length + ' today</span></div>';
+  
+  var applyOpen = lsGet('jae_apply_open', false);
+  var col = done === c.countries.length && c.countries.length ? ' now' : '';
+  html += '<div class="blk blue' + (applyOpen ? ' open' : '') + col + '"><div class="bhd" onclick="toggleApplyOpen(event)"><span class="be">🌎</span><div class="bm"><div class="bt">EVERY WORK DAY</div><div class="bh">Always apply</div></div><span class="bcount' + (done === c.countries.length && c.countries.length ? ' done' : '') + '">' + done + '/' + c.countries.length + '</span><span class="bchev">\u203a</span></div>';
+  
+  if (applyOpen) {
+    html += '<div class="subs">';
+    c.countries.forEach(function (n, ci) {
+      var on = s.applied && !!s.applied[n];
+      html += '<div class="subrow' + (on ? ' done' : '') + '"><span class="subcbx' + (on ? ' on' : '') + '" onclick="toggleApply(' + ci + ')">✓</span><span class="stx" onclick="toggleApply(' + ci + ')">' + esc(n) + '</span>' + (EDIT ? '<span class="srm" onclick="delCountry(' + ci + ')">×</span>' : '') + '</div>';
+    });
+    html += '</div>';
+    
+    if (EDIT) {
+      html += '<div class="esubs" style="padding-bottom:12px"><div class="addrow" style="margin:0"><input id="countryIn" placeholder="Add a country" onkeydown="if(event.key===\'Enter\')addCountry()"><button onclick="addCountry()">+</button></div></div>';
+    }
+  }
+  html += '</div>';
+  html += '<button class="cta ghost" style="margin-top:12px" onclick="goSpots()">📍 Find a work spot</button>';
+  html += '<div class="sectit">Notes</div><textarea class="notes" id="workNotes" placeholder="Plan the day, jot ideas, log progress\u2026" oninput="saveWorkNotes()"></textarea>';
+  
+  document.getElementById('work').innerHTML = html;
+  document.getElementById('workNotes').value = s.notes || '';
+  
+  updateWorkMeta(s);
+  drawFocus();
+}
+
+function toggleApplyOpen(e) {
+  var open = lsGet('jae_apply_open', false);
+  lsSet('jae_apply_open', !open);
+  renderWork();
+}
+
+function toggleApply(ci) {
+  var c = cfg();
+  var n = c.countries[ci];
+  if (n == null) return;
+  var s = workState();
+  if (!s.applied) s.applied = {};
+  s.applied[n] = !s.applied[n];
+  saveWorkState(s);
+  renderWork();
+  clearTimeout(window._ap);
+  window._ap = setTimeout(pushWork, 1000);
+}
+
+function addCountry() {
+  var inp = document.getElementById('countryIn');
+  var v = (inp.value || '').trim();
+  if (!v) return;
+  var c = cfg();
+  if (c.countries.indexOf(v) < 0) {
+    c.countries.push(v);
+    saveCfg(c);
+  }
+  inp.value = '';
+  renderWork();
+}
+
+function delCountry(ci) {
+  var c = cfg();
+  c.countries.splice(ci, 1);
+  saveCfg(c);
+  renderWork();
+}
+
+function saveWorkNotes() {
+  var s = workState();
+  s.notes = document.getElementById('workNotes').value;
+  saveWorkState(s);
+  clearTimeout(window._wn);
+  window._wn = setTimeout(pushWork, 1500);
+}
+
+let focus = { t: 25 * 60, run: false, iv: null, mode: 'Focus' };
+
+function fmtMS(t) {
+  return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0');
+}
+
+function drawFocus() {
+  var a = document.getElementById('focusTime');
+  if (!a) return;
+  a.textContent = fmtMS(focus.t);
+  document.getElementById('focusState').textContent = focus.mode;
+  document.getElementById('focusBtn').textContent = focus.run ? 'Pause' : 'Start ' + focus.mode.toLowerCase();
+}
+
+function toggleFocus() {
+  focus.run = !focus.run;
+  if (focus.run) {
+    focus.iv = setInterval(() => {
+      if (focus.mode === 'Focus') {
+        const ws = workState();
+        ws.workedSec = (ws.workedSec || 0) + 1;
+        saveWorkState(ws);
+        updateWorkMeta(ws);
+      }
+      focus.t--;
+      if (focus.t <= 0) {
+        clearInterval(focus.iv);
+        focus.run = false;
+        ding();
+        if (focus.mode === 'Focus') {
+          const s = workState();
+          s.focus = (s.focus || 0) + 1;
+          saveWorkState(s);
+          updateWorkMeta(s);
+          focus.mode = 'Break';
+          focus.t = 5 * 60;
+          toast('Focus done \u2014 take 5 ☕');
+          pushWork();
+        } else {
+          focus.mode = 'Focus';
+          focus.t = 25 * 60;
+          toast('Break over \u2014 back to it 💪');
+        }
+      }
+      drawFocus();
+    }, 1000);
+  } else {
+    pushWork();
+  }
+  drawFocus();
+}
+
+function updateWorkMeta(s) {
+  var el = document.getElementById('focusCount');
+  if (el) el.textContent = (s.focus || 0) + ' focus blocks \u00b7 ' + fmtDur(s.workedSec || 0) + ' worked today';
+}
+
+function resetFocus() {
+  clearInterval(focus.iv);
+  focus.run = false;
+  focus.mode = 'Focus';
+  focus.t = 25 * 60;
+  drawFocus();
+}
+
+function goSpots() {
+  showView('spots');
+  setBar('Spots', 'Bengaluru');
+  const eb = document.getElementById('editBtn');
+  if (eb) eb.style.display = 'none';
+  showBack('goWork');
+  renderSpots();
+}
+
+function renderSpots() {
+  var el = document.getElementById('spotCats');
+  el.innerHTML = '';
+  SPOT_CATS.forEach(function (grp) {
+    var h = document.createElement('div');
+    h.className = 'sectit';
+    h.textContent = grp.cat;
+    el.appendChild(h);
+    grp.items.forEach(function (sp) {
+      var maps = 'https://www.google.com/maps/search/' + encodeURIComponent(sp.maps || sp.name);
+      var d = document.createElement('div');
+      d.className = 'spot';
+      d.innerHTML = '<div class="si">📍</div><div class="sm"><b>' + esc(sp.name) + '</b><div class="meta">' + esc(sp.area) + ' \u00b7 ' + esc(sp.cost) + '</div><small>' + esc(sp.note) + '</small></div><a class="go" href="' + maps + '" target="_blank">Map ↗</a>';
+      el.appendChild(d);
+    });
+  });
+}
+
+function workState() {
+  const k = 'jae_work_' + todayKey();
+  let s = lsGet(k, null);
+  if (!s) {
+    s = { notes: '', focus: 0, workedSec: 0, applied: {} };
+    lsSet(k, s);
+  }
+  if (s.workedSec == null) s.workedSec = 0;
+  if (!s.applied) s.applied = {};
+  return s;
+}
+
+function saveWorkState(s) {
+  var k = 'jae_work_' + todayKey();
+  lsSet(k, s);
+  syncPush(k, s);
+}
+
+function ding() {
+  try {
+    const a = new (window.AudioContext || window.webkitAudioContext)();
+    const o = a.createOscillator(), g = a.createGain();
+    o.connect(g);
+    g.connect(a.destination);
+    o.type = 'sine';
+    o.frequency.value = 880;
+    g.gain.setValueAtTime(.001, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(.4, a.currentTime + .02);
+    g.gain.exponentialRampToValueAtTime(.001, a.currentTime + .6);
+    o.start();
+    o.stop(a.currentTime + .6);
+  } catch (e) { }
+  if (navigator.vibrate) navigator.vibrate([200, 80, 200]);
+}
+
+function refresh() {
+  renderWork();
+}
+
+window.onload = function() {
+  goWork();
+};
+</script>
+</body>
+</html>

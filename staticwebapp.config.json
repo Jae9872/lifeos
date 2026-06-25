@@ -17,6 +17,36 @@
       "headers": {
         "cache-control": "no-cache"
       }
+    },
+    {
+      "route": "/gym.html",
+      "headers": {
+        "cache-control": "no-cache"
+      }
+    },
+    {
+      "route": "/work.html",
+      "headers": {
+        "cache-control": "no-cache"
+      }
+    },
+    {
+      "route": "/food.html",
+      "headers": {
+        "cache-control": "no-cache"
+      }
+    },
+    {
+      "route": "/progress.html",
+      "headers": {
+        "cache-control": "no-cache"
+      }
+    },
+    {
+      "route": "/settings.html",
+      "headers": {
+        "cache-control": "no-cache"
+      }
     }
   ]
 }

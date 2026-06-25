@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0b0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>FAT BROKE - Progress</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="lifeos.css">
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <button class="iconbtn" id="backBtn" style="display:none">←</button>
+    <div class="brand"><h2 id="barTitle">Progress</h2><div class="sub" id="barSub">Your training</div></div>
+    <a class="iconbtn" href="settings.html" title="Settings">⚙</a>
+  </div>
+
+  <div class="view active" id="progress">
+    <div class="eyebrow">Progress</div>
+    <h1 class="title">Your training</h1>
+    <div class="sectit" style="margin-top:8px">This week</div>
+    <div class="kpis" id="cheatCodes"></div>
+    <div class="sectit">Totals</div>
+    <div class="stats" id="progStats"></div>
+    <div class="sectit">Strength by exercise <span style="font-weight:600;color:var(--faint);text-transform:none;letter-spacing:0">tap for graph</span></div>
+    <div id="exProg"></div>
+    
+    <div class="sectit" id="bodyProgHeader">Body progress</div>
+    <div class="card" id="bodyProgCard" style="margin-bottom:16px">
+      <div class="bodygrid" style="display:grid;grid-template-columns:1fr 1fr;gap:9px">
+        <div class="field" style="display:flex;flex-direction:column">
+          <label style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:6px">Weight (kg)</label>
+          <input id="bodyWeightIn" type="number" step="0.05" inputmode="decimal" placeholder="63.4" style="padding:10px 11px;border-radius:12px;border:var(--glass-border);background:var(--surface2);color:var(--text);font-size:15px">
+        </div>
+        <div class="field" style="display:flex;flex-direction:column">
+          <label style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:6px">Waist (in)</label>
+          <input id="bodyWaistIn" type="number" step="0.1" inputmode="decimal" placeholder="31.5" style="padding:10px 11px;border-radius:12px;border:var(--glass-border);background:var(--surface2);color:var(--text);font-size:15px">
+        </div>
+      </div>
+      <button class="cta" style="margin-top:12px" onclick="saveBodyLog()">Save check-in</button>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:8px;text-align:center">Keep it simple: morning, after bathroom, before food.</div>
+    </div>
+    
+    <div class="sectit">Body trends</div>
+    <div class="card" style="margin-bottom:16px;padding:12px">
+      <div id="bodyChart" style="width:100%"></div>
+      <div class="chartlegend" style="margin-top:8px;display:flex;gap:14px;color:var(--muted);font-size:11.5px">
+        <span><i style="width:14px;height:3px;border-radius:2px;background:#6c8cff;display:inline-block;margin-right:5px;vertical-align:middle"></i>Weight kg</span>
+        <span><i style="width:14px;height:3px;border-radius:2px;background:#ffcf5d;display:inline-block;margin-right:5px;vertical-align:middle"></i>Waist in</span>
+      </div>
+    </div>
+
+    <div class="sectit">Recent sessions</div>
+    <div id="histList"></div>
+  </div>
+
+  <div class="view" id="exdetail">
+    <div class="eyebrow">Progressive overload</div>
+    <h1 class="title" id="edName"></h1>
+    <div class="muted-p" id="edTrend"></div>
+    <div class="chartwrap"><div class="ttl">Working weight per session</div><div id="edChart"></div>
+      <div class="chartlegend"><span><i class="ln"></i> Weight (kg)</span><span>● reps logged</span></div>
+    </div>
+    <div class="sectit">Every logged set</div>
+    <div id="edSets"></div>
+  </div>
+
+  <div class="tabbar">
+    <a id="tabToday" href="index.html"><span class="ic">🌞</span>Today</a>
+    <a id="tabGym" href="gym.html"><span class="ic">🏋️</span>Gym</a>
+    <a id="tabWork" href="work.html"><span class="ic">💼</span>Work</a>
+    <a id="tabFood" href="food.html"><span class="ic">🍳</span>Fuel</a>
+    <a id="tabProg" class="on" href="progress.html"><span class="ic">📊</span>Progress</a>
+  </div>
+</div>
+
+<script src="shared.js"></script>
+<script>
+function setBar(t, s) {
+  document.getElementById('barTitle').textContent = t;
+  document.getElementById('barSub').textContent = s;
+}
+
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function sessionsFor(ex) {
+  const hist = lsGet('jae_sessions', []);
+  const pts = [];
+  hist.slice().reverse().forEach(h => {
+    (h.log || []).forEach(x => {
+      if (x.exercise !== ex) return;
+      let topW = 0, repsAt = 0;
+      (x.sets || []).forEach(st => {
+        if (st.kg > topW) {
+          topW = st.kg;
+          repsAt = st.reps;
+        }
+      });
+      if (topW > 0) pts.push({ date: h.date, kg: topW, reps: repsAt });
+    });
+  });
+  return pts;
+}
+
+function weekDates() {
+  const a = [];
+  const d = new Date();
+  for (let i = 0; i < 7; i++) {
+    a.push(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'));
+    d.setDate(d.getDate() - 1);
+  }
+  return a;
+}
+
+function renderCheatCodes() {
+  var c = cfg();
+  const days = weekDates();
+  var counts = {};
+  c.habits.forEach(function (h) { counts[h.k] = 0; });
+  var workedSec = 0;
+  
+  days.forEach(function (dt) {
+    const p = lsGet('jae_plan_' + dt, null);
+    if (p && p.habits) {
+      c.habits.forEach(function (h) {
+        if (p.habits[h.k]) counts[h.k]++;
+      });
+    }
+    const w = lsGet('jae_work_' + dt, null);
+    if (w && w.workedSec) workedSec += w.workedSec;
+  });
+  
+  const hist = lsGet('jae_sessions', []);
+  const wk = new Date();
+  wk.setDate(wk.getDate() - 6);
+  wk.setHours(0, 0, 0, 0);
+  const trained = hist.filter(function (h) { return new Date(h.date) >= wk; }).length;
+  
+  var kpis = [{ e: '🏋️', v: trained + '/6', l: 'Trained this week' }, { e: '⏱️', v: fmtDur(workedSec), l: 'Time worked' }];
+  c.habits.forEach(function (h, i) {
+    kpis.push({ e: h.e, v: counts[h.k], l: h.l, hot: i === 0 });
+  });
+  
+  const el = document.getElementById('cheatCodes');
+  if (el) {
+    el.innerHTML = '';
+    kpis.forEach(function (k) {
+      const d = document.createElement('div');
+      d.className = 'kpi' + (k.hot ? ' hot' : '');
+      d.innerHTML = '<div class="ke">' + esc(k.e) + '</div><div class="kv num">' + k.v + '</div><div class="kl">' + esc(k.l) + '</div>';
+      el.appendChild(d);
+    });
+  }
+}
+
+function openProgress() {
+  showView('progress');
+  setBar('Progress', 'Your training');
+  hideBack();
+  renderCheatCodes();
+  
+  var hist = lsGet('jae_sessions', []);
+  var tv = hist.reduce(function (a, h) { return a + (h.vol || 0); }, 0);
+  document.getElementById('progStats').innerHTML = stat(hist.length, 'Sessions') + stat(fmtK(tv), 'kg lifted') + stat(streak(hist), 'day streak');
+  
+  var exMap = {};
+  hist.slice().reverse().forEach(function (h) {
+    (h.log || []).forEach(function (x) {
+      var topW = 0;
+      (x.sets || []).forEach(function (st) {
+        if (st.kg > topW) topW = st.kg;
+      });
+      if (topW <= 0) return;
+      (exMap[x.exercise] = exMap[x.exercise] || []).push(topW);
+    });
+  });
+  
+  var ep = document.getElementById('exProg');
+  ep.innerHTML = '';
+  var names = Object.keys(exMap);
+  if (!names.length) {
+    ep.innerHTML = '<div class="empty"><span class="em">📈</span>Log a workout and your strength curve builds here.</div>';
+  }
+  
+  names.forEach(function (nm) {
+    var arr = exMap[nm];
+    var lastVal = arr[arr.length - 1];
+    var delta = Math.round((lastVal - arr[0]) * 10) / 10;
+    var mx = Math.max.apply(null, arr);
+    var spark = '';
+    arr.slice(-8).forEach(function (v) {
+      spark += '<i style="height:' + Math.max(3, Math.round(v / mx * 28)) + 'px"></i>';
+    });
+    var d = document.createElement('div');
+    d.className = 'exrow';
+    d.innerHTML = '<div class="spark">' + spark + '</div><div class="nm"><b>' + esc(nm) + '</b><small>' + lastVal + ' kg' + (delta ? ' · ' + (delta > 0 ? '+' : '') + delta + ' kg' : '') + '</small></div><div class="arw">›</div>';
+    d.onclick = function () { openExercise(nm); };
+    ep.appendChild(d);
+  });
+  
+  var hl = document.getElementById('histList');
+  hl.innerHTML = '';
+  if (!hist.length) {
+    hl.innerHTML = '<div class="empty"><span class="em">🏋️</span>No sessions logged yet.</div>';
+  }
+  
+  hist.slice(0, 12).forEach(function (h) {
+    var d = document.createElement('div');
+    d.className = 'prcard';
+    var dt = new Date(h.date);
+    var bd = '';
+    (h.log || []).forEach(function (x) {
+      if (x.sets && x.sets.length) bd += '<span class="bdg">' + esc(x.exercise) + ' ' + x.sets.length + '×</span>';
+    });
+    d.innerHTML = '<div class="ph"><b>' + esc(h.name) + '</b><span class="date">' + dt.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) + '</span></div><div class="badges">' + bd + '</div>';
+    hl.appendChild(d);
+  });
+  renderBodyProgress();
+}
+
+function openExercise(ex) {
+  showView('exdetail');
+  setBar(ex, 'Progression');
+  showBack('openProgress');
+  
+  var pts = sessionsFor(ex);
+  var nextKg = 0;
+  
+  Object.keys(DATA.workouts).forEach(function (w) {
+    (DATA.workouts[w] || []).forEach(function (e) {
+      if (e.exercise === ex) nextKg = e.nextKg;
+    });
+  });
+  
+  var trend = '';
+  if (pts.length >= 2) {
+    var dl = Math.round((pts[pts.length - 1].kg - pts[0].kg) * 10) / 10;
+    trend = pts.length + ' sessions · ' + (dl > 0 ? '+' : '') + dl + ' kg overall';
+  } else if (pts.length === 1) {
+    trend = '1 session logged';
+  } else {
+    trend = 'No data yet — log a set to start the curve';
+  }
+  
+  document.getElementById('edTrend').textContent = trend;
+  document.getElementById('edChart').innerHTML = lineChart(pts, nextKg);
+  
+  var es = document.getElementById('edSets');
+  es.innerHTML = '';
+  if (!pts.length) {
+    es.innerHTML = '<div class="empty">No sets logged.</div>';
+  }
+  
+  pts.slice().reverse().forEach(function (p) {
+    var d = document.createElement('div');
+    d.className = 'sumrow';
+    var dt = new Date(p.date);
+    d.innerHTML = '<span class="nm">' + dt.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) + '</span><span class="vv num">' + p.kg + ' kg × ' + p.reps + '</span>';
+    es.appendChild(d);
+  });
+}
+
+function lineChart(pts, nextKg) {
+  var W = 320, H = 170, pl = 34, pr = 14, pt = 16, pb = 28;
+  if (!pts.length) {
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '"><text x="' + (W / 2) + '" y="' + (H / 2) + '" fill="rgba(255,255,255,.4)" font-size="12" text-anchor="middle">No data yet</text></svg>';
+  }
+  var vals = pts.map(function (p) { return p.kg; }).concat(nextKg ? [nextKg] : []);
+  var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
+  if (mn === mx) {
+    mn = mn - 2.5;
+    mx = mx + 2.5;
+  }
+  var pad = (mx - mn) * 0.15 || 1;
+  mn -= pad;
+  mx += pad;
+  
+  var n = pts.length;
+  var xx = function (i) { return pl + (n === 1 ? (W - pl - pr) / 2 : (i * (W - pl - pr) / (n - 1))); };
+  var yy = function (v) { return pt + (1 - (v - mn) / (mx - mn)) * (H - pt - pb); };
+  
+  var g = '';
+  for (var i = 0; i < 4; i++) {
+    var gy = pt + i * (H - pt - pb) / 3;
+    var gv = (mx - (mx - mn) * i / 3);
+    g += '<line x1="' + pl + '" y1="' + gy.toFixed(1) + '" x2="' + (W - pr) + '" y2="' + gy.toFixed(1) + '" stroke="rgba(255,255,255,.06)"/><text x="' + (pl - 6) + '" y="' + (gy + 3).toFixed(1) + '" fill="rgba(255,255,255,.4)" font-size="9" text-anchor="end">' + (Math.round(gv * 10) / 10) + '</text>';
+  }
+  
+  var path = '';
+  pts.forEach(function (p, i) {
+    path += (i ? 'L' : 'M') + xx(i).toFixed(1) + ' ' + yy(p.kg).toFixed(1) + ' ';
+  });
+  
+  var dots = '';
+  pts.forEach(function (p, i) {
+    dots += '<circle cx="' + xx(i).toFixed(1) + '" cy="' + yy(p.kg).toFixed(1) + '" r="4" fill="#9a7cff" stroke="#0b0c10" stroke-width="1.5"/>';
+    dots += '<text x="' + xx(i).toFixed(1) + '" y="' + (yy(p.kg) - 9).toFixed(1) + '" fill="rgba(236,240,250,.8)" font-size="9" text-anchor="middle">×' + p.reps + '</text>';
+    var dl = new Date(p.date);
+    dots += '<text x="' + xx(i).toFixed(1) + '" y="' + (H - 9) + '" fill="rgba(255,255,255,.4)" font-size="8.5" text-anchor="middle">' + (dl.getDate() + '/' + (dl.getMonth() + 1)) + '</text>';
+  });
+  
+  var nextMark = '';
+  if (nextKg) {
+    var ny = yy(nextKg);
+    nextMark = '<line x1="' + pl + '" y1="' + ny.toFixed(1) + '" x2="' + (W - pr) + '" y2="' + ny.toFixed(1) + '" stroke="#34e2b0" stroke-width="1.2" stroke-dasharray="4 4"/><text x="' + (W - pr) + '" y="' + (ny - 4).toFixed(1) + '" fill="#34e2b0" font-size="9" text-anchor="end">next ' + nextKg + 'kg</text>';
+  }
+  
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '">' + g + nextMark + '<path d="' + path + '" fill="none" stroke="url(#lg)" stroke-width="2.5" stroke-linejoin="round"/><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6c8cff"/><stop offset="1" stop-color="#9a7cff"/></linearGradient></defs>' + dots + '</svg>';
+}
+
+const BODY_KEY = 'jae_body_logs_v1';
+
+function getBodyLogs() {
+  try {
+    return JSON.parse(localStorage.getItem(BODY_KEY) || '[]').sort((a, b) => new Date(b.date) - new Date(a.date));
+  } catch (e) {
+    return [];
+  }
+}
+
+function setBodyLogs(a) {
+  localStorage.setItem(BODY_KEY, JSON.stringify(a.slice(0, 500)));
+  if (typeof syncPush === 'function') {
+    syncPush(BODY_KEY, a.slice(0, 500));
+  }
+}
+
+function todayKey() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function saveBodyLog() {
+  const w = parseFloat(document.getElementById('bodyWeightIn').value);
+  const waist = parseFloat(document.getElementById('bodyWaistIn').value);
+  
+  if (!Number.isFinite(w) && !Number.isFinite(waist)) {
+    if (typeof toast === 'function') toast('Add weight or waist first');
+    return;
+  }
+  
+  const date = todayKey();
+  let a = getBodyLogs();
+  const existing = a.find(x => x.date === date);
+  a = a.filter(x => x.date !== date);
+  
+  const finalWeight = Number.isFinite(w) ? w : (existing ? existing.weight : null);
+  const finalWaist = Number.isFinite(waist) ? waist : (existing ? existing.waist : null);
+  
+  a.unshift({
+    date: date,
+    weight: finalWeight,
+    waist: finalWaist
+  });
+  setBodyLogs(a);
+  
+  if (typeof pushRemote === 'function') {
+    pushRemote({
+      type: 'body',
+      date: date,
+      weight: finalWeight,
+      waist: finalWaist
+    });
+  }
+  
+  if (typeof toast === 'function') toast('Saved check-in ✓');
+  document.getElementById('bodyWeightIn').value = '';
+  document.getElementById('bodyWaistIn').value = '';
+  renderBodyProgress();
+}
+
+function drawBodyChart(a) {
+  const pts = a.slice().reverse().filter(x => Number.isFinite(x.weight) || Number.isFinite(x.waist)).slice(-30);
+  const el = document.getElementById('bodyChart');
+  if (!pts.length) {
+    el.innerHTML = '<div class="empty" style="text-align:center;color:var(--muted);padding:24px 14px">Chart appears after your first log.</div>';
+    return;
+  }
+  
+  const W = 320, H = 160, pl = 34, pr = 14, pt = 14, pb = 22;
+  const vals = [];
+  pts.forEach(p => {
+    if (Number.isFinite(p.weight)) vals.push(p.weight);
+    if (Number.isFinite(p.waist)) vals.push(p.waist);
+  });
+  
+  let mn = Math.min(...vals), mx = Math.max(...vals);
+  if (mn === mx) {
+    mn -= 1;
+    mx += 1;
+  }
+  const pad = (mx - mn) * 0.15 || 1;
+  mn -= pad;
+  mx += pad;
+  
+  const xx = i => pl + (pts.length === 1 ? (W - pl - pr) / 2 : i * (W - pl - pr) / (pts.length - 1));
+  const yy = v => pt + (1 - (v - mn) / (mx - mn)) * (H - pt - pb);
+  
+  let grid = '';
+  for (let i = 0; i < 4; i++) {
+    const y = pt + i * (H - pt - pb) / 3;
+    const val = mx - (mx - mn) * i / 3;
+    grid += '<line x1="' + pl + '" y1="' + y.toFixed(1) + '" x2="' + (W - pr) + '" y2="' + y.toFixed(1) + '" stroke="rgba(15,23,42,0.06)"/><text x="' + (pl - 6) + '" y="' + (y + 3).toFixed(1) + '" fill="var(--muted)" font-size="9" text-anchor="end">' + val.toFixed(1) + '</text>';
+  }
+  
+  function getPath(f) {
+    let p = '';
+    pts.forEach((x, i) => {
+      if (Number.isFinite(x[f])) p += (p ? 'L' : 'M') + xx(i).toFixed(1) + ' ' + yy(x[f]).toFixed(1) + ' ';
+    });
+    return p;
+  }
+  
+  function getDots(f, c) {
+    let s = '';
+    pts.forEach((x, i) => {
+      if (Number.isFinite(x[f])) s += '<circle cx="' + xx(i).toFixed(1) + '" cy="' + yy(x[f]).toFixed(1) + '" r="3" fill="' + c + '"/>';
+    });
+    return s;
+  }
+  
+  el.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block">' + grid + '<path d="' + getPath('weight') + '" fill="none" stroke="#6c8cff" stroke-width="2"/><path d="' + getPath('waist') + '" fill="none" stroke="#ffcf5d" stroke-width="2"/>' + getDots('weight', '#6c8cff') + getDots('waist', '#ffcf5d') + '</svg>';
+}
+
+function renderBodyProgress() {
+  const a = getBodyLogs();
+  
+  // Morning check-in rules for inputs visibility
+  const now = new Date();
+  const hr = now.getHours();
+  const morningActive = (hr >= 6 && hr < 18);
+  let showCard = false;
+  if (morningActive) {
+    const fState = lsGet('jae_food_' + todayKey(), null);
+    const hasCoffee = fState && fState.coffee >= 1;
+    if (hasCoffee) {
+      showCard = true;
+    }
+  }
+  
+  const headerEl = document.getElementById('bodyProgHeader');
+  const cardEl = document.getElementById('bodyProgCard');
+  if (headerEl && cardEl) {
+    if (showCard) {
+      headerEl.style.display = '';
+      cardEl.style.display = '';
+    } else {
+      headerEl.style.display = 'none';
+      cardEl.style.display = 'none';
+    }
+  }
+  
+  // Pre-fill fields with latest weight and waist if available
+  const latestW = a.find(x => Number.isFinite(x.weight));
+  const latestWaist = a.find(x => Number.isFinite(x.waist));
+  
+  if (latestW && !document.getElementById('bodyWeightIn').value) {
+    document.getElementById('bodyWeightIn').placeholder = latestW.weight.toFixed(2);
+  }
+  if (latestWaist && !document.getElementById('bodyWaistIn').value) {
+    document.getElementById('bodyWaistIn').placeholder = latestWaist.waist.toFixed(1);
+  }
+  
+  drawBodyChart(a);
+}
+
+window.onload = function() {
+  openProgress();
+};
+</script>
+</body>
+</html>
