@@ -95,9 +95,7 @@ input, textarea, select {
   min-height: 100vh;
   padding-bottom: 96px;
   box-shadow: 0 0 40px rgba(148, 163, 184, 0.12);
-  background: rgba(255, 255, 255, 0.3);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.55);
 }
 
 /* topbar glassmorphism */

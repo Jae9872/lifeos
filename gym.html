@@ -376,15 +376,23 @@ function renderSet() {
     document.getElementById('exSub').textContent = e.sets + ' sets \u00b7 ' + exRest(e) + 's rest \u00b7 working ' + e.nextKg + ' kg';
   }
   
-  const url = GIFMAP[e.exercise];
+  let url = GIFMAP[e.exercise];
+  if (url && url.includes('media.giphy.com/media/')) {
+    const parts = url.split('/media/');
+    if (parts.length > 1) {
+      const id = parts[1].split('/')[0];
+      url = 'https://i.giphy.com/' + id + '.gif';
+    }
+  }
   const yt = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(e.exercise + ' exercise form');
   const m = document.getElementById('media');
   m.innerHTML = '<div class="ph"><div class="em">🏋️</div><div>' + e.exercise + '</div><div>(Demo unavailable)</div></div><a class="demo" target="_blank" href="' + yt + '">\u25b6 Demo</a>';
   
   if (url) {
     const img = new Image();
+    img.referrerPolicy = 'no-referrer';
     img.onload = () => {
-      m.innerHTML = '<img src="' + url + '" alt=""><a class="demo" target="_blank" href="' + yt + '">\u25b6 Demo</a>';
+      m.innerHTML = '<img src="' + url + '" referrerpolicy="no-referrer" alt=""><a class="demo" target="_blank" href="' + yt + '">\u25b6 Demo</a>';
     };
     img.onerror = () => {
       m.innerHTML = '<div class="ph"><div class="em">🏋️</div><div>' + e.exercise + '</div><div>(Demo unavailable)</div></div><a class="demo" target="_blank" href="' + yt + '">\u25b6 Demo</a>';
